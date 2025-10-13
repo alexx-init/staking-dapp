@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Monad 3D Staking DApp</title>
+
+<!-- Ethers v5 UMD -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+<!-- Google font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#0b0710;
+    --glass: rgba(255,255,255,0.04);
+    --accent: #b86eff;
+    --accent-2:#7a5bff;
+    --muted:#b8aee6;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#eef0ff;background:var(--bg);overflow:auto}
+  /* background image layer */
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:0;
+    background-image: url('priceBG.jpeg'); /* -> make sure priceBG.jpeg is in same folder */
+    background-size:cover; background-position:center;
+    filter: blur(2px) brightness(.6);
+    transform: scale(1.02);
+    pointer-events:none;
+  }
+
+  /* animated nebula/gradient */
+  .nebula {
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:
+      radial-gradient(circle at 10% 20%, rgba(184,110,255,0.08), transparent 10%),
+      radial-gradient(circle at 80% 70%, rgba(98,60,255,0.06), transparent 12%);
+    mix-blend-mode: screen;
+    filter: blur(22px);
+    transform: translateZ(0);
+  }
+
+  /* canvas particle area (3D feel) */
+  #particles {
+    position:fixed; inset:0; z-index:2; pointer-events:none;
+  }
+
+  /* container */
+  .wrap{
+    position:relative; z-index:3; display:flex; flex-direction:column; gap:26px;
+    align-items:center; padding:36px 24px; min-height:100vh;
+    perspective:1000px;
+  }
+
+  /* main card */
+  .main {
+    width:clamp(860px,90%,1200px);
+    border-radius:18px;
+    padding:24px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 10px 50px rgba(10,6,20,0.6), inset 0 -6px 40px rgba(0,0,0,0.25);
+    backdrop-filter: blur(8px) saturate(1.1);
+    transform-style: preserve-3d;
+    transition: transform .18s ease, box-shadow .18s ease;
+    display:flex; gap:20px; align-items:center;
+  }
+
+  /* glowing purple border */
+  .main::after{
+    content:""; position:absolute; inset:-2px; border-radius:20px; z-index:-1;
+    background: linear-gradient(90deg, rgba(185,110,255,0.14), rgba(122,91,255,0.09));
+    filter: blur(12px); opacity:.9;
+  }
+
+  .left {
+    flex:1;
+    padding:18px 12px;
+  }
+  .title{
+    font-weight:800; font-size:20px; color:var(--accent); margin:0;
+    letter-spacing:0.6px;
+  }
+  .subtitle{color:var(--muted); font-size:13px; margin-top:6px}
+
+  .price{
+    font-size:40px; font-weight:800; margin:8px 0 0; color:white;
+    -webkit-text-stroke: 0.3px rgba(255,255,255,0.06);
+  }
+  .change { font-size:14px; margin-top:6px; color:#ff9b9b; }
+
+  .controls{
+    display:flex; gap:12px; align-items:center; margin-top:16px; flex-wrap:wrap;
+  }
+
+  .btn{
+    appearance:none; border:0; padding:10px 14px; border-radius:10px; cursor:pointer;
+    font-weight:700; background: linear-gradient(90deg,var(--accent),var(--accent-2));
+    color:white; box-shadow: 0 6px 26px rgba(125,60,222,0.18); transition: transform .12s ease;
+  }
+  .btn.secondary{ background:rgba(255,255,255,0.04); color:var(--muted); box-shadow:none; border:1px solid rgba(255,255,255,0.03) }
+
+  /* right column stats */
+  .right {
+    width:420px; padding:18px; display:flex; flex-direction:column; gap:12px;
+  }
+
+  .panel{
+    border-radius:12px; padding:12px; background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.035); text-align:center;
+  }
+  .stat-name{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .stat-value{ margin-top:6px; font-weight:800; font-size:20px; color:white; word-break:break-all; }
+
+  /* grid of token boxes */
+  .grid{
+    width:100%; margin-top:28px; display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:16px;
+    z-index:3;
+  }
+
+  .token-card{
+    border-radius:12px; padding:18px; background:rgba(0,0,0,0.28); border:1px solid rgba(255,255,255,0.02);
+    transition: transform .15s ease, box-shadow .15s ease, background .18s ease;
+    cursor:pointer; position:relative; overflow:hidden;
+    min-height:86px;
+  }
+  .token-card:hover{ transform: translateY(-6px); box-shadow: 0 18px 40px rgba(120,60,220,0.12); }
+
+  .token-card .name{ font-size:12px; color:var(--muted); text-transform:uppercase; }
+  .token-card .val{ font-size:18px; font-weight:700; color:white; margin-top:6px; }
+  .token-card .delta{ font-size:12px; color:#ff9b9b; margin-top:6px; }
+
+  /* hover fill effect (we will toggle .active) */
+  .token-card .hover-fill{
+    position:absolute; inset:0; z-index:0; background:linear-gradient(90deg, rgba(185,110,255,0.06), rgba(122,91,255,0.03)); opacity:0; transition:opacity .12s ease, backdrop-filter .12s ease;
+    backdrop-filter: blur(6px);
+  }
+  .token-card.active .hover-fill{ opacity:1 }
+
+  /* bottom footer */
+  footer{ color:var(--muted); text-align:center; margin-top:28px; font-size:13px; z-index:3; padding-bottom:40px }
+
+  /* small screens */
+  @media (max-width:880px){
+    .main{ flex-direction:column; gap:12px; padding:18px }
+    .right{ width:100% }
+  }
+</style>
+</head>
+<body>
+
+<!-- background nebula -->
+<div class="nebula"></div>
+<canvas id="particles"></canvas>
+
+<div class="wrap">
+  <div class="main" id="mainCard">
+    <div class="left">
+      <h1 class="title">MONAD — Staking (Alexx)</h1>
+      <div class="subtitle">Stake your tokens, earn rewards. Faucet: 100 tokens per address.</div>
+      <div class="price" id="monadPrice">$0.000</div>
+      <div class="change" id="monadChange">&nbsp;</div>
+
+      <div class="controls">
+        <button class="btn" id="connectBtn">Connect Wallet</button>
+        <button class="btn secondary" id="claimBtn">Claim Faucet</button>
+        <button class="btn secondary" id="approveBtn">Approve Staking</button>
+        <input id="stakeInput" placeholder="Amount to stake" style="padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:white;width:160px" />
+        <button class="btn" id="stakeBtn">Stake</button>
+        <button class="btn secondary" id="unstakeBtn">Unstake</button>
+        <button class="btn" id="claimRewardBtn">Claim Rewards</button>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="panel">
+        <div class="stat-name">Connected</div>
+        <div class="stat-value" id="addr">Not connected</div>
+      </div>
+
+      <div class="panel">
+        <div class="stat-name">Token Balance</div>
+        <div class="stat-value" id="tokBal">0</div>
+      </div>
+
+      <div class="panel">
+        <div class="stat-name">Staked</div>
+        <div class="stat-value" id="staked">0</div>
+      </div>
+
+      <div class="panel">
+        <div class="stat-name">Pending rewards</div>
+        <div class="stat-value" id="pending">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="tokenGrid"></div>
+
+  <footer>Built by Alexx 🚀 | Powered by CoinGecko & Binance APIs</footer>
+</div>
+</body>
+
+<script src="main.js"></script>
+
+</html>
