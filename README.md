@@ -5,7 +5,7 @@ Users can claim tokens and stake them to earn rewards dynamically!
 
 
 ## 🌐 Live Demo
-👉 [ https://alexx-init.github.io/monad-staking-dapp ]
+👉 [ https://alexx-init.github.io/staking-dapp/ ]
 
 
 ## 🧱 Smart Contracts
