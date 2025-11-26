@@ -143,11 +143,44 @@
   /* bottom footer */
   footer{ color:var(--muted); text-align:center; margin-top:28px; font-size:13px; z-index:3; padding-bottom:40px }
 
-  /* small screens */
-  @media (max-width:880px){
-    .main{ flex-direction:column; gap:12px; padding:18px }
-    .right{ width:100% }
+
+ /* Tablet */
+@media (max-width: 992px) {
+  .container {
+    max-width: 95%;
   }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .form-box {
+    padding: 15px;
+  }
+
+  h1, h2 {
+    font-size: 1.4rem;
+  }
+
+  .upload-box {
+    height: 160px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  h1, h2 {
+    font-size: 1.2rem;
+  }
+
+  input,
+  button,
+  textarea {
+    font-size: 0.9rem;
+  }
+}
+ 
+
+  
 </style>
 </head>
 <body>
@@ -207,4 +240,5 @@
 <script src="main.js"></script>
 
 </html>
+
 
